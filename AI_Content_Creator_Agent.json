@@ -1,0 +1,548 @@
+{
+  "name": "AI Content Creator Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "cc58e603-f5e5-4c06-9907-bfd0eb6a34ea",
+      "name": "Schedule Trigger",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "https://www.vsws.org/",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "da932f8d-33a0-4d8e-a860-7be8ce9158a0",
+      "name": "Scrape the Website"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "paragraphs",
+              "cssSelector": "=p",
+              "skipSelectors": "img, footer, nav",
+              "returnArray": true
+            },
+            {
+              "key": "headings",
+              "cssSelector": "h1, h2, h3",
+              "skipSelectors": "img, footer, nav",
+              "returnArray": true
+            },
+            {
+              "key": "meta_desc",
+              "cssSelector": "meta[name=\"description\"]",
+              "returnValue": "attribute",
+              "attribute": "content",
+              "returnArray": true
+            },
+            {
+              "key": "links",
+              "cssSelector": "a",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        0
+      ],
+      "id": "97923165-7411-427d-af7a-9bbfb201af04",
+      "name": "HTML Extract"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "mistralai/mixtral-8x7b-instruct"
+            },
+            {
+              "name": "prompt",
+              "value": "=[\n  {\n    \"role\": \"system\",\n    \"content\": \"You are a social media strategist for a nonprofit. Only return a short, emotionally compelling Instagram caption. Do NOT use markdown, code blocks, or formatting like ``` or </details>. Your only job is to return a short, emotionally compelling Instagram caption. DO NOT include markdown, bullet points, headings, labels like 'Response', 'Prompt', or any formatting (like ``` or ##). Only return plain text that can be copied directly into Instagram. If you include anything extra, your answer is invalid. Just return plain text in the content field such that I can simply copy and paste everything after content: on to my socials, I sohuldn't need to edit and remove any ectra unnecessary text such that here is your caption or anything like that, just simply return the caption without any extra text or details .\"\n  },\n  {\n    \"role\": \"user\",\n    \"content\": \"Here is the brand voice:\\n\\n {{ $json.paragraphs }}\\n\\n and headings:\\n {{ $json.headings }}. \\n Now, write an engaging Instagram caption that relates to the trending topic: {{ $node['Twitter Trends API'].json.trends[0].name }} . Make sure that you understand what the trending topic means and that the tone matches the brand, product or service, the content is visually appealing, and you add relevant hashtags. Reemember that our purpose for this is that the brand can have posts on the tredning topic and it doesn't seem like the post has been AI generated while the post related to the trending topic really well. It should not be very long, but it is important to understand why a particular topic is trending, it is not sufficient to only know the meaning of the trending topic, rather create the post basis the trend and not just the topic. Just give the caption and nothing else, remember that I don't want to see the prompt i have given or your internal reasoning before or after the caption, when you return the text, it should just be the caption and not the prompt or anything else. when you return the final text it should be without the symbols like: ```\\n\\n or text like Here is your caption, I don't want any other text but only the caption. Don't include the new line character \\n in your response also, the response should be in a way that I can simply copy everything after text and paste it on my socials. Don't include lines like A short instagram caption is here, i just want to see the caption in that field and nothing else, no other line, don't reiterate what has been asked of you, just return the final captoin instead of anything else\"\n  }\n]\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "d23709fd-9f05-4969-acef-9ca679c467f8",
+      "name": "Open Router Caption Generation"
+    },
+    {
+      "parameters": {
+        "pageId": {
+          "__rl": true,
+          "value": "https://www.notion.so/Daily-Tweets-1dd6173179cf80f0839ed502cb7345b2?pvs=4",
+          "mode": "url"
+        },
+        "title": "=Post with Visual for {{ $now }}",
+        "blockUi": {
+          "blockValues": [
+            {
+              "textContent": "={{ $('Clean the Caption').first().json.caption }}\n\n{{ $('WebviewLink of image').item.json.webViewLink }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        2860,
+        0
+      ],
+      "id": "78860667-c8d8-4bf2-9a0e-2c399ece0a39",
+      "name": "Notion1 to store Daily Posts",
+      "credentials": {
+        "notionApi": {
+          "id": "5MEdJE03XloOTRnE",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://twitter-trends-api.p.rapidapi.com/trends?woeid=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RapidAPI-Key",
+              "value": "f42a408abcmshc8e122b98f00f7dp10f321jsn76c2f54e285c"
+            },
+            {
+              "name": "X-RapidAPI-Host",
+              "value": "twitter-trends-api.p.rapidapi.com"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "82456691-c7eb-4d46-b08c-3427579cfdeb",
+      "name": "Twitter Trends API"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "mimeType contains 'image/' and '1QOTm2EMjoCQ-eUTj5ZUqJ2Zc-0OQdNrP' in parents",
+        "returnAll": true,
+        "filter": {},
+        "options": {
+          "fields": [
+            "webViewLink",
+            "id",
+            "name"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1540,
+        0
+      ],
+      "id": "be9067f8-9f88-4cec-b201-7f31398f3e9b",
+      "name": "Listing Images From Google Drive",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "UhoOE2wwN5N502zO",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "mistralai/mixtral-8x7b-instruct"
+            },
+            {
+              "name": "prompt",
+              "value": "=[\n  {\n    \"role\": \"system\",\n    \"content\": \"You are a creative director for a social impact brand. Your job is to write high-quality image prompts for AI tools like DALL·E or SDXL. The prompt must generate emotionally appealing, brand-aligned visuals based on a provided caption, brand values, and product images. Avoid generic stock imagery or clichés. Be specific about visual elements, emotions, and aesthetics. The tone should match the brand personality.\"\n  },\n  {\n    \"role\": \"user\",\n    \"content\": \"Here is the caption: \\\"{{ $('Clean the Caption').item.json.caption }}\\\"\\n\\nHere is the description of the brand from its website:\\n{{ $('Clean Data').item.json.paragraphs }} and {{ $('Clean Data').item.json.headings }}\\n\\nHere are some product image names from Google Drive:\\n{{ $json.webViewLink }}\\n\\nSelect only one image from the above Google Drive image list—the one that most meaningfully aligns with the caption and brand values. Use your judgment to pick the most emotionally resonant or visually representative image. Then write a visually rich and aesthetic image generation prompt for that selected image only. Blend the caption’s message with the visual identity of the selected product image and the brand’s values. This prompt will be sent to an AI image generation model. Just return the prompt and nothing else, remember that I don't want to see the reason i have given or your internal reasoning before or after the caption, when you return the text, it should just be the prompt to send ahead and not a desciprtion of what i have asked you to do before or after the final prompt. when you return the final text it should be without the symbols like: ```\\n\\n or text like Here is your desired output, I don't want any other text but only the caption. Don't include the new line character \\n in your response also, the response should be in a way that I can simply copy everything after text and paste it on my the image genration ai dashboard, I shouldn't have to clean the generated text from you. Don't include lines like A short prompt is here, i just want to see the final prompt output in that field and nothing else, no other line, don't reiterate what has been asked of you, just return the final prompt instead of anything else\"\n  }\n]\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        0
+      ],
+      "id": "bc288907-9de9-44b5-ae3f-416417166f2a",
+      "name": "Image prompt Generator"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const cleanedParagraphs = item.json.paragraphs.filter(p => p && p.trim() !== '');\n  const cleanedHeadings = item.json.headings.filter(h => h && h.trim() !== '');\n  return {\n    json: {\n      paragraphs: cleanedParagraphs,\n      headings: cleanedHeadings,\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "4fd459d3-f8fe-4304-ab66-be7263b040f0",
+      "name": "Clean Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  caption: $input.first().json.choices[0].text.replace(/```|“|”|‘|’/g, \"\").trim()\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "id": "a4d9a290-fb94-4d35-9183-33325a879531",
+      "name": "Clean the Caption"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawOutputs = $input.first().json.choices; // this is your full array of model outputs\n\n// Step 1: Grab the first generated prompt\n// const firstPromptRaw =  rawOutputs[0]?.choices[0]?.text || '';\n\nconst firstPromptRaw =  $input.first().json.choices[0].text || '';\n\n// Step 2: Clean up the prompt\nconst cleanPrompt = firstPromptRaw\n  .replace(/^[`\"'\\s\\n]*Prompt[:\\-]*\\s*/i, '')         // Remove leading `Prompt:` or similar tags\n  .replace(/^[`\"'\\s\\n]*|[`\"'\\s\\n]*$/g, '')            // Trim extra quotes, backticks, or whitespace\n  .replace(/^```.*?\\n/, '')                           // Remove code block headers if present\n  .replace(/```$/, '')                                // Remove trailing code block markers\n  .trim();\n\n// Output the clean version\nreturn {\n  finalPrompt: cleanPrompt\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        0
+      ],
+      "id": "feafbacf-d336-48fa-9348-e82643e4ac56",
+      "name": "Clean the image prompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.deepinfra.com/v1/inference/stabilityai/stable-diffusion-2-1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 9EiGIM1wQ9Lr1nbv23J9M5d8RvhEx8d2"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "stabilityai/stable-diffusion-xl-base-1.0"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ $json[\"finalPrompt\"] }}"
+            },
+            {
+              "name": "size",
+              "value": "1024x1024"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        0
+      ],
+      "id": "44bb63e2-13d4-4f07-91e8-34b050b62666",
+      "name": "Image Generation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the full base64 image URL from previous node (update the key as needed)\nconst base64Image = $input.first().json.images[0]; // replace 'image' if your actual key is different\n\n// Match the base64 data and strip the prefix\nconst matches = base64Image.match(/^data:(image\\/\\w+);base64,(.+)$/);\n\nif (!matches || matches.length !== 3) {\n  throw new Error(\"Invalid base64 image string\");\n}\n\nconst mimeType = matches[1];  // e.g., image/png or image/jpeg\nconst base64Data = matches[2]; // pure base64 string without header\nconst buffer = Buffer.from(base64Data, 'base64');\n\n// Define the extension from mimeType\nconst extension = mimeType.split('/')[1]; // 'png' or 'jpeg'\n\n// Return as binary so the next node can consume it\nreturn [\n  {\n    binary: {\n      data: {\n        data: buffer.toString('base64'),\n        mimeType: mimeType,\n        fileName: `generated_image.${extension}`,\n      }\n    },\n    json: {} // optional, keep if you want to carry forward other metadata\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        0
+      ],
+      "id": "5b9a8521-cc27-4c69-9316-569826838a28",
+      "name": "Extracting the Base64 Image"
+    },
+    {
+      "parameters": {
+        "name": "generated_image.png",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "root",
+          "mode": "list",
+          "cachedResultName": "/ (Root folder)",
+          "cachedResultUrl": "https://drive.google.com/drive"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2640,
+        0
+      ],
+      "id": "b278f671-45ad-4f10-83e7-3b2250c454b2",
+      "name": "WebviewLink of image",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "UhoOE2wwN5N502zO",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Twitter Trends API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape the Website": {
+      "main": [
+        [
+          {
+            "node": "HTML Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML Extract": {
+      "main": [
+        [
+          {
+            "node": "Clean Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open Router Caption Generation": {
+      "main": [
+        [
+          {
+            "node": "Clean the Caption",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twitter Trends API": {
+      "main": [
+        [
+          {
+            "node": "Scrape the Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listing Images From Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Image prompt Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image prompt Generator": {
+      "main": [
+        [
+          {
+            "node": "Clean the image prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Data": {
+      "main": [
+        [
+          {
+            "node": "Open Router Caption Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean the Caption": {
+      "main": [
+        [
+          {
+            "node": "Listing Images From Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean the image prompt": {
+      "main": [
+        [
+          {
+            "node": "Image Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Generation": {
+      "main": [
+        [
+          {
+            "node": "Extracting the Base64 Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extracting the Base64 Image": {
+      "main": [
+        [
+          {
+            "node": "WebviewLink of image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WebviewLink of image": {
+      "main": [
+        [
+          {
+            "node": "Notion1 to store Daily Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8737e8c6-e193-43d5-a1b3-586dbbb59401",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "817ad8cd0b02cdbd2107659e718e3deb1b527f007d5c71c106cc354ea0f8ab4a"
+  },
+  "id": "0Dks98th5U1vojDF",
+  "tags": []
+}
